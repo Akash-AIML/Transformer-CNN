@@ -1,9 +1,16 @@
+import sys
 import os
 import torch
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-from .transformer import TimeSeriesTransformer  # make sure this is correct
+
+# Add backend folder to Python path so we can do absolute imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Absolute import (no relative import)
+from transformer import TimeSeriesTransformer
+
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pth")
 SCALER_PATH = os.path.join(os.path.dirname(__file__), "scaler.npy")

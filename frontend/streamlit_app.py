@@ -1,8 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from backend.model_backend import load_model, predict
 import altair as alt
+import sys
+import os
+
+# Add backend path
+sys.path.append(os.path.join(os.path.dirname(__file__), '../backend'))
+from model_backend import predict
 
 st.set_page_config(page_title="Energy Forecasting", layout="wide")
 st.title("Energy Consumption Forecasting")
@@ -74,8 +79,27 @@ if df_input is not None and not df_input.empty:
     st.dataframe(df_input)
 
     try:
-        predictions = predict(df_input)
-        df_input["PredictedEnergyConsumption"] = predictions
+        # ---------------- Rolling window prediction ----------------
+        seq_len = 24
+        pred_len = 12
+
+        features = ['Temperature','EnergyConsumption','HourOfDay','DayOfWeek']
+        data_array = df_input[features].values
+        all_preds = []
+
+        # If not enough data, fallback to single prediction
+        if len(data_array) <= seq_len:
+            all_preds = predict(data_array, pred_len=pred_len)
+            pred_series = [np.nan]*(len(data_array)-1) + all_preds
+        else:
+            for i in range(len(data_array) - seq_len):
+                input_seq = data_array[i:i+seq_len]
+                preds = predict(input_seq, pred_len=pred_len)
+                all_preds.append(preds[0])  # take first step to align with sequence
+            pred_series = [np.nan]*seq_len + all_preds
+            pred_series = pred_series[:len(df_input)]
+
+        df_input['PredictedEnergyConsumption'] = pred_series
 
         st.subheader("Predictions")
         st.dataframe(df_input)
@@ -83,7 +107,6 @@ if df_input is not None and not df_input.empty:
         # ---------------- Graphs ----------------
         if len(df_input) > 1:
             df_plot = df_input.copy().reset_index(drop=True)
-            # Ensure numeric and fill NaNs
             df_plot[['EnergyConsumption','PredictedEnergyConsumption']] = df_plot[['EnergyConsumption','PredictedEnergyConsumption']].apply(pd.to_numeric, errors='coerce').fillna(0)
             df_plot['index'] = df_plot.index
 
@@ -98,7 +121,7 @@ if df_input is not None and not df_input.empty:
             st.altair_chart(line_chart, use_container_width=True)
 
             # Scatter plot
-            scatter = alt.Chart(df_input).mark_circle(size=60).encode(
+            scatter = alt.Chart(df_plot).mark_circle(size=60).encode(
                 x=alt.X('EnergyConsumption', type='quantitative'),
                 y=alt.Y('PredictedEnergyConsumption', type='quantitative'),
                 tooltip=['Temperature','HourOfDay','DayOfWeek']
