@@ -1,14 +1,4 @@
----
 
-title: Energy Consumption Forecasting
-emoji: ⚡
-colorFrom: blue
-colorTo: green
-sdk: streamlit
-sdk_version: "1.52.2"
-app_file: app.py
-pinned: false
--------------
 
 # ⚡ Energy Consumption Forecasting Dashboard
 
